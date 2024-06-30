@@ -3,15 +3,18 @@
 #include <Adafruit_SSD1306.h>
 #include <SoftwareSerial.h>
 #include <ArduinoJson.h>
+#include <ArduinoHttpClient.h>
 #include "secrets.h"
 
 //Display
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
 
+//Wifi
 SoftwareSerial ESP01(2, 3);
-boolean found = false;
+bool found = false;
 int timeTaken = 0;
+
 
 //Keypad
 const int AD_PIN = A0; 
@@ -32,9 +35,10 @@ void loop() {
 }
 
 void connectToWifi(){
-  sendCommand("AT", 5, "OK");
+  sendCommand("AT+RST", 5, "OK");
   sendCommand("AT+CWMODE=1", 5, "OK");
   sendCommand("AT+CWJAP=\""+ ssid +"\",\""+ password +"\"",20,"OK");
+
 }
 
 void initialiseDisplay(){
