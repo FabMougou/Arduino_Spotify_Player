@@ -84,7 +84,7 @@ async function spotifyNext(){
   .catch((err) => {
     console.error('Error skipping to next track:', err);
   });
-}
+};
 
 async function spotifyBack(){
   spotifyApi.skipToPrevious({
@@ -96,7 +96,7 @@ async function spotifyBack(){
   .catch((err) => {
     console.error('Error skipping to previous track:', err);
   });
-}
+};
 
 async function checkShuffleState() {
   try {
@@ -126,26 +126,32 @@ async function spotifyToggleShuffle(deviceId) {
   
 
 async function handleKeypad(key){
-  if (key == 1) {
+  if (key == '1') {
     await spotifyTogglePlayback();
-  }
-  if (key == 2) {
+  };
+  if (key == '2') {
     await spotifyNext();
-  }
+  };
 
-  if (key == 3) {
+  if (key == '3') {
     await spotifyBack();
-  }
+  };
 
-  if (key == 4){
+  if (key == '4'){
     await spotifyToggleShuffle();
-  }
+  };
+};
 
-}
+async function handleRFID(uid){
+  if (uid == "B3814C27"){
+    console.log("UID got scanned")
+  }
+};
 
 //============================================Port handling
 const { read } = require('johnny-five/lib/pin');
 const { SerialPort } = require('serialport');
+var receivedData = '';
 
 
 async function main(){
@@ -163,12 +169,30 @@ async function main(){
   });
 
   sp.on('data', async (data) => {
-    const enc = new TextDecoder();
-    const arr = new Uint8Array(data);
-    const ready = enc.decode(arr);
+    var enc = new TextDecoder();
+    var arr = new Uint8Array(data);
+    var chunk = String(enc.decode(arr));
+    chunk = chunk.trim();  // Remove leading/trailing whitespace
+
   
-    console.log('Data received:', ready);
-    handleKeypad(ready);
+    if (chunk == "#"){
+
+      // Check if the received data contains the complete UID (assuming UID length is known)
+      // Adjust this condition based on your UID length
+      console.log('Complete UID received:', receivedData);
+
+      // Pass the complete UID to your handling functions
+      handleKeypad(receivedData);
+      handleRFID(receivedData);
+
+      // Clear accumulated data for next UID
+      receivedData = '';
+      chunk = "";
+    }
+    else {
+      receivedData += chunk;  // Append received chunk to accumulated data
+      console.log("Received data:", receivedData)
+    }
   });
 
 }
