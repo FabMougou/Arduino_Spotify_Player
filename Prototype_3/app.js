@@ -1,20 +1,69 @@
 //==============================================SPOTIFY SETUP
 
 const SpotifyWebApi = require('spotify-web-api-node');
-const access_token = '';
-const refresh_token = '';
-const deviceId = '';
+const access_token = 'BQBJyVIK8keHUe93EFBIBNoFUFgzaH94vLZksTVW0w8oYLpNBByJ73rjZmDSqxQ05hbFuj1_mYK6f3_NNjenF2qw-ASPgMdMT31_b5NMl6QcUMvdMOU2JH-L37QkmBrZIHc-RvWhiJGJHw11v86B4vZDu3W2H9PDXlFyepDI1sluResu-R_ipk_Rjlm2BKjaq6cvzzm0M2wJ0GrVNJn2I_n2LUvxJIgpIS4pjNDxsTaX7Sg6fqAU0MmzVg';
+const refresh_token = 'AQBkU9mqqMeWhOOssdvK-arLyO6jBTnnBgRBD7DhKApfTxYaSj7jt-1JeAyjJtJynmr2NdI1zN18E0RP6c3x3lSaPU6j9QLOuV-gGbysr2P-sfEnrSmcvwogW-BrP_GCTvo';
+const deviceId = '6e5068422777bebe01b0707b8d30cc99ba2bb00f';
+
+const cron = require('node-cron');
 
 const spotifyApi = new SpotifyWebApi({
-  clientId: '',
-  clientSecret: '',
+  clientId: 'f12e30f3795c4bbe9592050d8c2c8f04',
+  clientSecret: 'd2d57cdd7fc04f25b435dab68be9ff77',
 });
 
 spotifyApi.setAccessToken(access_token);
   
+//============================================Port handling
+const { read, write } = require('johnny-five/lib/pin');
+const { SerialPort } = require('serialport');
+var receivedData = '';
+
+
+const sp = new SerialPort({
+  path: 'COM3',
+  baudRate: 9600,
+  autoOpen: false
+});
+
+sp.open((err) => {
+  if (err) { 
+    return console.log('Error opening port:', err.message);
+  }
+  console.log('Port has opened');
+});
+
+sp.on('data', async (data) => {
+  var enc = new TextDecoder();
+  var arr = new Uint8Array(data);
+  var chunk = String(enc.decode(arr));
+  chunk = chunk.trim();  // Remove leading/trailing whitespace
+
+  //# is delimiter character
+  if (chunk == "#"){
+    handleKeypad(receivedData);
+    handleRFID(receivedData);
+
+    receivedData = '';
+    chunk = "";
+  }
+  else {
+    receivedData += chunk;  // Append received chunk to accumulated data
+    console.log("Received data:", receivedData)
+  }
+});
+
+async function writeToDisplay(msg){
+  sp.write(msg, (err) => {
+    if (err) {
+      return console.log('Error on write: ', err.message);
+    }
+    console.log('message written');
+  });
+}
+
 
 //================================== SPOTIFY FUNCTIONS
-
 
 function spotifyPlay(){
   spotifyApi.play({
@@ -43,7 +92,6 @@ function spotifyPause(){
 async function spotifyTogglePlayback() {
   try {
     const data = await spotifyApi.getMyCurrentPlaybackState();
-
     if (data.body && data.body.is_playing) {
       spotifyPause();
     } else {
@@ -116,18 +164,44 @@ async function checkShuffleState() {
 async function spotifyToggleShuffle(deviceId) {
   try {
     const shuffleState = await checkShuffleState();
-    // Await the setShuffle call directly instead of using .then() and .catch()
     await spotifyApi.setShuffle(!shuffleState, { device_id: deviceId });
     console.log('Shuffle mode toggled!');
   } catch (error) {
     console.error('Error toggling shuffle state:', error);
   }
 }
-  
 
+async function spotifyPlayPlaylist(playlistId) {
+  try {
+    await spotifyApi.play({
+      context_uri: `spotify:playlist:${playlistId}`,
+      device_id: deviceId,
+    });
+    console.log('Playlist playback started!');
+  } catch (error) {
+    console.error('Error playing playlist:', error);
+  }
+}
+
+async function spotifyCurrentSong(){
+  const data = await spotifyApi.getMyCurrentPlayingTrack();
+
+    if (data.body && data.body.is_playing) {
+      const track = data.body.item;
+      const song = track.name;
+      const artists = track.artists.map(artist => artist.name).join(', ');
+      console.log(`Now Playing: ${song} by ${artists}`);
+      writeToDisplay(song + "#" + artists);
+
+    } else {
+      console.log('No song currently playing.');
+    }
+}
+//================================== HANDLING INPUTS
 async function handleKeypad(key){
   if (key == '1') {
     await spotifyTogglePlayback();
+    await spotifyCurrentSong();
   };
   if (key == '2') {
     await spotifyNext();
@@ -144,57 +218,8 @@ async function handleKeypad(key){
 
 async function handleRFID(uid){
   if (uid == "B3814C27"){
-    console.log("UID got scanned")
+    spotifyPlayPlaylist('5wZAfBSotlMHA6tfuh6MgT?si=eb218af942ba443a');
   }
 };
 
-//============================================Port handling
-const { read } = require('johnny-five/lib/pin');
-const { SerialPort } = require('serialport');
-var receivedData = '';
-
-
-async function main(){
-  const sp = new SerialPort({
-    path: 'COM3',
-    baudRate: 9600,
-    autoOpen: false
-  });
-
-  sp.open((err) => {
-    if (err) { 
-      return console.log('Error opening port:', err.message);
-    }
-    console.log('Port has opened');
-  });
-
-  sp.on('data', async (data) => {
-    var enc = new TextDecoder();
-    var arr = new Uint8Array(data);
-    var chunk = String(enc.decode(arr));
-    chunk = chunk.trim();  // Remove leading/trailing whitespace
-
-  
-    if (chunk == "#"){
-
-      // Check if the received data contains the complete UID (assuming UID length is known)
-      // Adjust this condition based on your UID length
-      console.log('Complete UID received:', receivedData);
-
-      // Pass the complete UID to your handling functions
-      handleKeypad(receivedData);
-      handleRFID(receivedData);
-
-      // Clear accumulated data for next UID
-      receivedData = '';
-      chunk = "";
-    }
-    else {
-      receivedData += chunk;  // Append received chunk to accumulated data
-      console.log("Received data:", receivedData)
-    }
-  });
-
-}
-
-main()
+cron.schedule('*/10 * * * * *', spotifyCurrentSong);
