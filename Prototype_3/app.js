@@ -1,7 +1,7 @@
 //==============================================SPOTIFY SETUP
 
 const SpotifyWebApi = require('spotify-web-api-node');
-const access_token = 'BQBJyVIK8keHUe93EFBIBNoFUFgzaH94vLZksTVW0w8oYLpNBByJ73rjZmDSqxQ05hbFuj1_mYK6f3_NNjenF2qw-ASPgMdMT31_b5NMl6QcUMvdMOU2JH-L37QkmBrZIHc-RvWhiJGJHw11v86B4vZDu3W2H9PDXlFyepDI1sluResu-R_ipk_Rjlm2BKjaq6cvzzm0M2wJ0GrVNJn2I_n2LUvxJIgpIS4pjNDxsTaX7Sg6fqAU0MmzVg';
+const access_token = 'BQD_arMOBKHlCWWWi48Ell5x_83My7qoOlYfKmaLAEr3P2ZX65ySrBs68HbCJOohNdd2RD6mptd7UpcUzZ8km5nwwq_afHadMpAI86AMEOEibjBX9iDiH8NECVIEJAGc3shzF13qBcypqIqxBUa6BrIqrYkCcKuOqct3v8593GgDQPQOZwd2hddwiCkXi1pwWwx6k6C8rT1Qjb_ZBh3-NktWJGdAzoOBVw9tPxyy4w-gQXSxwxcjsrP_jA';
 const refresh_token = 'AQBkU9mqqMeWhOOssdvK-arLyO6jBTnnBgRBD7DhKApfTxYaSj7jt-1JeAyjJtJynmr2NdI1zN18E0RP6c3x3lSaPU6j9QLOuV-gGbysr2P-sfEnrSmcvwogW-BrP_GCTvo';
 const deviceId = '6e5068422777bebe01b0707b8d30cc99ba2bb00f';
 
@@ -217,7 +217,7 @@ async function handleKeypad(key){
 };
 
 async function handleRFID(uid){
-  if (uid == "B3814C27"){
+  if (uid == "4DD836AB82A81"){
     spotifyPlayPlaylist('5wZAfBSotlMHA6tfuh6MgT?si=eb218af942ba443a');
   }
 };
