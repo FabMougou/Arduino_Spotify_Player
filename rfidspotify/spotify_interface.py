@@ -6,6 +6,7 @@ import RPi.GPIO as GPIO
 from mfrc522 import SimpleMFRC522
 from mfrc522 import MFRC522
 from datetime import datetime
+from display import DisplayTrack, DisplayPause
 
 
 DEVICE_ID="98bb0735e28656bac098d927d410c3138a4b5bca"
@@ -15,21 +16,25 @@ print('running spotify interface')
 
     
 def spotifyAction(id):
+    global pausedOnce
     print('spotify performing action...')
     
     try:
         playback = sp.current_playback()
         
-        if id == 'pause':
+        if id == 'pause' and pausedOnce == False:
             if playback and playback['is_playing']:
                 sp.pause_playback()
                 print('playback paused, card removed')
+                pausedOnce = True
             return
         
         elif id == 'play':
             if playback and not playback['is_playing']:
                 sp.start_playback()
                 print('playback resumed, card reinserted')
+            
+            pausedOnce = False
             return
     
         else:
@@ -37,8 +42,33 @@ def spotifyAction(id):
             sp.start_playback(device_id=DEVICE_ID, context_uri=uri)
             print("now playing:", albumName)
         
-    except:
-        print('invalid card')
+    except Exception as e:
+        print(e)
+        
+def spotifyDisplayCurrentTrack():
+    global previousTrack, previousArtists, alreadyPaused
+    
+    try:
+        playback = sp.current_playback()
+        
+        if playback is not None:
+            if playback['is_playing']:
+                trackName = playback['item']['name']
+                artists = ", ".join([artist['name'] for artist in playback['item']['artists']])
+                alreadyPaused = False
+                
+                if trackName != previousTrack or artists != previousArtists:
+                    previousTrack = trackName
+                    previousArtists = artists
+                    DisplayTrack(trackName, artists)
+                    
+            else:
+                if alreadyPaused == False:
+                   DisplayPause()
+                   alreadyPaused = True
+            
+    except Exception as e:
+        print(e)
         
         
     
@@ -49,6 +79,10 @@ scan_timeout = 4  # Timeout in seconds to ignore the same card
 last_scan_times = {}
 last_scanned = ""
 current_time = time()
+pausedOnce = False
+alreadyPaused = False
+previousTrack = ""
+previousArtists = ""
 
 cardDetails = {
     '5721142575324548176657394664551235072': ['spotify:album:7j6h4vC8tacAYvReQMHuR8', 'hugo: reimagined'],
@@ -66,7 +100,6 @@ cardDetails = {
 while True:
     
     try:
-        
         # Spotify Authentication
         sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=CLIENT_ID,
                                                         client_secret=CLIENT_SECRET,
@@ -77,6 +110,7 @@ while True:
         print("Waiting for scan")
         
         while True:
+            spotifyDisplayCurrentTrack()
             
             # Transfer playback to the Raspberry Pi if music is playing on a different device
             #sp.transfer_playback(device_id=DEVICE_ID, force_play=False)
@@ -86,11 +120,13 @@ while True:
                 
                 current_time = time()
                 try:
-                    if current_time > last_scan_times[last_scanned] + scan_timeout:
+                    if current_time > last_scan_times[last_scanned] + scan_timeout and alreadyPaused == False:
                         spotifyAction('pause')
+                        DisplayPause()
+                        alreadyPaused = True
                         
-                except:
-                    print('ran exception')
+                except Exception as e:
+                    print(e)
                 sleep(2)
                 continue
 
@@ -101,9 +137,8 @@ while True:
             if buf:
                 # Convert the list of bytes to a single integer
                 serial_number = str(int.from_bytes(buf, byteorder='big'))
-                print("id:", serial_number)
-                
                 current_time = time()
+                
                 #To prevent it from scanning again if in vicinity
                 if serial_number in last_scan_times:
                     last_scan_time = last_scan_times[serial_number]
